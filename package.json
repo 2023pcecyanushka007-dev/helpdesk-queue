@@ -1,0 +1,30 @@
+{
+  "name": "helpdesk-queue",
+  "version": "1.0.0",
+  "description": "helpdesk-queue",
+  "main": "index.js",
+  "scripts": {
+    "test": "node backend/utils/escalateTickets.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2023pcecyanushka007-dev/helpdesk-queue.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/2023pcecyanushka007-dev/helpdesk-queue/issues"
+  },
+  "homepage": "https://github.com/2023pcecyanushka007-dev/helpdesk-queue#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
