@@ -334,509 +334,6 @@ You said you have a query — ask me!
 And don't worry about moving ahead yet. We'll resolve your question first, then continue building the project step-by-step.
 
 what next?
-
-Great. Your backend is running, so now we start implementing the actual assignment.
-
-And this is where we should follow the brief carefully: tickets + queue ordering first, then filters, assignment, search, and pagination. The brief explicitly says the ordering rule is the heart of the project.
-
-For now, we will NOT connect MongoDB yet. We'll first make the queue logic work with sample ticket data. Once that works, moving the same data into MongoDB will be much easier.
-
-PART 3 — Build the Ticket Queue ⭐
-
-Our next goal:
-
-Sample Tickets
-      ↓
-Queue Algorithm
-      ↓
-GET /api/tickets
-      ↓
-Correctly ordered tickets
-Step 17 — Create folders
-
-Your Explorer currently has:
-
-helpdesk-queue
-├── backend
-│   └── server.js
-│
-└── frontend
-
-Inside backend, create a folder called:
-
-data
-
-So:
-
-backend
-├── data
-└── server.js
-How to do it
-
-Right-click:
-
-backend
-
-→ New Folder
-
-Name it:
-
-data
-Step 18 — Create tickets.js
-
-Right-click:
-
-backend/data
-
-→ New File
-
-Name it:
-
-tickets.js
-
-Open it and paste:
-
-const tickets = [
-    {
-        id: 1,
-        customerName: "ABC Corporation",
-        title: "Laptop won't boot before client demo",
-        description: "Laptop is not starting and the client demo is in a few hours.",
-        priority: "URGENT",
-        assignedTo: "Priya",
-        status: "OPEN",
-        createdAt: "2026-09-16T08:00:00",
-        responseDueAt: "2026-09-16T10:00:00"
-    },
-
-    {
-        id: 2,
-        customerName: "XYZ Technologies",
-        title: "VPN not working",
-        description: "Unable to connect to the company VPN.",
-        priority: "URGENT",
-        assignedTo: "Rahul",
-        status: "OPEN",
-        createdAt: "2026-09-16T09:00:00",
-        responseDueAt: "2026-09-16T17:00:00"
-    },
-
-    {
-        id: 3,
-        customerName: "PQR Industries",
-        title: "Request for bigger monitor",
-        description: "Customer requested a larger monitor for their workstation.",
-        priority: "NORMAL",
-        assignedTo: "Priya",
-        status: "OPEN",
-        createdAt: "2026-09-16T07:00:00",
-        responseDueAt: "2026-09-17T10:00:00"
-    },
-
-    {
-        id: 4,
-        customerName: "Tech Solutions",
-        title: "Email service is unavailable",
-        description: "Employees are unable to send or receive emails.",
-        priority: "HIGH",
-        assignedTo: "Rahul",
-        status: "IN_PROGRESS",
-        createdAt: "2026-09-16T08:30:00",
-        responseDueAt: "2026-09-16T18:00:00"
-    },
-
-    {
-        id: 5,
-        customerName: "DEF Limited",
-        title: "Install VS Code",
-        description: "Please install VS Code on the development machine.",
-        priority: "LOW",
-        assignedTo: "Priya",
-        status: "OPEN",
-        createdAt: "2026-09-16T10:00:00",
-        responseDueAt: "2026-09-18T10:00:00"
-    },
-
-    {
-        id: 6,
-        customerName: "Global Systems",
-        title: "Database connection issue",
-        description: "Application cannot connect to the database.",
-        priority: "HIGH",
-        assignedTo: "Priya",
-        status: "OPEN",
-        createdAt: "2026-09-16T06:30:00",
-        responseDueAt: "2026-09-16T11:00:00"
-    },
-
-    {
-        id: 7,
-        customerName: "ABC Corporation",
-        title: "Password reset request",
-        description: "Customer needs help resetting their password.",
-        priority: "NORMAL",
-        assignedTo: "Rahul",
-        status: "OPEN",
-        createdAt: "2026-09-16T11:00:00",
-        responseDueAt: "2026-09-17T11:00:00"
-    }
-];
-
-module.exports = tickets;
-
-Save with:
-
-Ctrl + S
-
-Step 19 — Why we have these fields
-
-Each ticket has:
-
-id
-customerName
-title
-description
-priority
-assignedTo
-status
-createdAt
-responseDueAt
-
-The two most important fields for the queue are:
-
-priority
-responseDueAt
-
-Because we need to determine:
-
-Is it overdue?
-        ↓
-What is its priority?
-        ↓
-When is its response due?
-Step 20 — Create the queue algorithm
-
-Now we're creating the heart of the application.
-
-Inside backend, create a folder:
-
-utils
-
-So:
-
-backend
-├── data
-│   └── tickets.js
-├── utils
-└── server.js
-
-Inside utils, create:
-
-queueOrder.js
-
-Paste:
-
-const priorityValue = {
-    URGENT: 1,
-    HIGH: 2,
-    NORMAL: 3,
-    LOW: 4
-};
-
-function sortTickets(tickets) {
-    const now = new Date();
-
-    return [...tickets].sort((a, b) => {
-
-        const aOverdue = new Date(a.responseDueAt) < now;
-        const bOverdue = new Date(b.responseDueAt) < now;
-
-        // Overdue tickets always come first
-        if (aOverdue !== bOverdue) {
-            return aOverdue ? -1 : 1;
-        }
-
-        // Higher priority comes first
-        if (priorityValue[a.priority] !== priorityValue[b.priority]) {
-            return priorityValue[a.priority] - priorityValue[b.priority];
-        }
-
-        // Earlier response deadline comes first
-        const aDue = new Date(a.responseDueAt).getTime();
-        const bDue = new Date(b.responseDueAt).getTime();
-
-        if (aDue !== bDue) {
-            return aDue - bDue;
-        }
-
-        // Older ticket comes first
-        return new Date(a.createdAt).getTime() -
-               new Date(b.createdAt).getTime();
-    });
-}
-
-module.exports = sortTickets;
-
-Save.
-
-Step 21 — Understand what we just built
-
-This is very important for your presentation/interview.
-
-Suppose we have:
-
-Ticket A
-URGENT
-OVERDUE
-
-Ticket B
-URGENT
-NOT OVERDUE
-
-Ticket C
-HIGH
-OVERDUE
-
-Ticket D
-NORMAL
-NOT OVERDUE
-
-Our queue becomes:
-
-Ticket A
-↓
-Ticket C
-↓
-Ticket B
-↓
-Ticket D
-
-Because:
-
-First priority:
-OVERDUE
-
-Then:
-
-URGENT
-HIGH
-NORMAL
-LOW
-
-Then:
-
-Earlier response deadline
-
-Then:
-
-Older ticket
-
-This directly addresses the central requirement of the assignment.
-
-Step 22 — Connect this to the backend
-
-Now open:
-
-backend/server.js
-
-Currently you have the simple server code.
-
-Replace everything inside server.js with:
-
-const express = require("express");
-const cors = require("cors");
-
-const tickets = require("./data/tickets");
-const sortTickets = require("./utils/queueOrder");
-
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/", (req, res) => {
-    res.json({
-        message: "HelpDesk Queue API is running"
-    });
-});
-
-app.get("/api/tickets", (req, res) => {
-
-    const sortedTickets = sortTickets(tickets);
-
-    res.json({
-        success: true,
-        count: sortedTickets.length,
-        tickets: sortedTickets
-    });
-});
-
-const PORT = 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-Save:
-
-Ctrl + S
-
-Step 23 — Restart the backend
-
-Your old server is probably still running.
-
-Go to the terminal where you ran:
-
-node server.js
-
-Press:
-
-Ctrl + C
-
-Then run:
-
-node server.js
-
-You should see:
-
-Server running on port 5000
-Step 24 — Test the API
-
-Go to your PORTS tab.
-
-Find:
-
-5000
-
-Open the forwarded URL.
-
-Previously you saw:
-
-{
-    "message": "HelpDesk Queue API is running"
-}
-
-Now go to:
-
-/api/tickets
-
-So if your forwarded URL is something like:
-
-https://xxxxx-5000.app.github.dev
-
-the API address becomes:
-
-https://xxxxx-5000.app.github.dev/api/tickets
-
-Don't copy my example URL — use the URL shown in your PORTS tab.
-
-Step 25 — What you should see
-
-You should get JSON similar to:
-
-{
-  "success": true,
-  "count": 7,
-  "tickets": [
-    {
-      "id": 1,
-      "customerName": "ABC Corporation",
-      "title": "Laptop won't boot before client demo",
-      "priority": "URGENT",
-      ...
-    },
-    ...
-  ]
-}
-
-The important thing is that the tickets are not necessarily in the same order as tickets.js.
-
-The backend is now sorting them.
-
-⚠️ One important point about our sample dates
-
-The current date in our application environment is September 16, 2026, and we've deliberately created some deadlines that have already passed and some that haven't.
-
-That lets us test the most important feature:
-
-OVERDUE → FRONT
-
-Later, when we create tickets through the UI, the SLA due time will be calculated automatically based on priority.
-
-For example, eventually:
-
-URGENT → response due within 2 hours
-NORMAL → response due within 1 day
-
-That is how we'll connect the "agreed response time" requirement to the actual application.
-
-Where we are now
-
-You have:
-
-              HELPDESK QUEUE
-                    │
-                    ▼
-             Sample Tickets
-                    │
-                    ▼
-           Queue Ordering Logic ⭐
-                    │
-                    ▼
-             GET /api/tickets
-                    │
-                    ▼
-             Sorted JSON data
-
-This is a major milestone.
-
-What comes next
-
-After you confirm this API is working, we'll do:
-
-PART 4 — Make the queue actually visible
-
-We'll connect:
-
-Frontend
-    ↓
-fetch()
-    ↓
-GET /api/tickets
-    ↓
-Backend
-    ↓
-Sorted tickets
-    ↓
-Frontend ticket cards
-
-So instead of the fake tickets currently hardcoded in your frontend, your page will display the real tickets coming from your backend.
-
-Then we'll add, in this order:
-
-✅ Ticket data
-✅ Queue algorithm
-⬜ Display real tickets
-⬜ Overdue filter
-⬜ Assigned-to-me filter
-⬜ Customer search
-⬜ Priority/status filters
-⬜ Pagination
-⬜ Create ticket
-⬜ Automatic SLA calculation
-⬜ Ticket details
-⬜ MongoDB
-⬜ Final testing
-⬜ README
-⬜ Deployment
-For now, do only Steps 17–24.
-
-Then open:
-
-/api/tickets
-
-If you get the JSON response, send me a screenshot of it. Then we'll connect it to your frontend.
-
 why is it showing like this
 now what next should i do according to the assignment
 
@@ -2077,3 +1574,273 @@ curl http://localhost:5000/api/tickets
 and see whether the priority of an overdue ticket has moved up by exactly one level.
 
 Stop there. Once you send me the output of the POST /api/escalate command, I'll check whether the escalation is behaving correctly before we move on to customer search.
+
+I’ll trace the current queue ordering, ticket model, and existing checks first, then I’ll implement the escalation rule at the backend boundary where queue state is computed. I’ll also identify the cheapest focused test or command that can prove overdue tickets rise exactly one priority level per run.
+
+Read 
+
+Search complete: Inspect queue architecture
+
+Searched codebase for "helpdesk-queue ticket data model queue ordering logic", no results
+
+Searched codebase for "priority response deadlines overdue escalation automation", no results
+
+Searched for files matching `**/*ticket*.{js,ts,json,xml,yml,yaml}`, 2 matches
+
+Searched for files matching `**/*queue*.{js,ts,json,xml,yml,yaml}`, 1 match
+
+Searched for files matching `**/*helpdesk*.{js,ts,rb,php,py}`, no matches
+
+Searched for regex `priority|response.*deadline|overdue|escalate`, 43 results
+
+Searched for regex `ticket.*order|order.*ticket|queue.*order`, 1 result
+
+Searched for files matching `**/*filter*.{js,ts,rb,php,py}`, no matches
+
+Searched for files matching `**/*assignment*.{js,ts,rb,php,py}`, no matches
+
+Searched for files matching `**/*pagination*.{js,ts,rb,php,py}`, no matches
+
+Searched codebase for "automated escalation check overdue tickets priority response deadline", no results
+
+Searched for files matching `**/*ticket*.*.{test,spec,unit,integration}`, no matches
+
+Searched for files matching `**/*queue*.*.{test,spec,unit,integration}`, no matches
+
+Searched for regex `responseDueAt|response.*deadline|overdue`, 30 results
+
+No matches found. Your search pattern might be excluded completely by either the search.exclude settings or .*ignore files.
+If you believe that it should have results, you can check into the .*ignore files and the exclude setting (here are some excluded patterns for reference:[**/node_modules,**/bower_components,**/*.code-search]).
+Then if you want to include those files you can call the tool again by setting "includeIgnoredFiles" to true.
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+Read , lines 1 to 220
+
+The repo already has dedicated `queueOrder` and `escalateTickets` modules, so the twist likely belongs in the existing backend flow rather than requiring a new subsystem. I’m reading those modules plus the server and package scripts now to verify whether escalation is currently missing, partially wired, or using the wrong deadline semantics.
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+The backend already mutates overdue priorities one step per invocation and runs a minute interval, but there is no automated test and the API currently returns the entire sorted queue without the requested overdue/assignee/customer filters or pagination. The discriminating check is straightforward: feed an overdue `LOW`/`NORMAL`/`HIGH` ticket through one escalation run and assert it advances once, then verify queue queries use the escalated state. I’m checking the existing UI and README so the API changes match the project’s current contract.
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+Read 
+
+The UI has only client-side overdue/my filters and no customer lookup or paging; the backend has the right ordering rule but exposes no query contract for those workflows. I’ll first harden and test the escalation utility with an injectable clock, which makes the “one level per run” rule deterministic; then I’ll wire filtered, paginated queue responses and update the UI to consume them.
+
+Generating patch (61 lines) in , , 
+
+
+```
+
+```
+
+```
+
+```
+
+```
+
+```
+
+
+Ran terminal command:  npm test
+
+The focused check passes: an overdue ticket advances `LOW -> NORMAL` on the first run and `NORMAL -> HIGH` on the second, while `URGENT` and not-yet-due tickets stay unchanged. I’m moving to the API now so escalation runs before every queue read, and the same sorted result can support overdue, assignee, customer-name, and page/limit queries consistently.
+
+Generating patch (38 lines) in 
+
+
+```
+
+```
+
+
+Ran terminal command:  node --check backend/server.js
+
+The API route now applies escalation before filtering, preserves the priority/deadline/age ordering, and returns pagination metadata. Next I’m replacing the UI’s local slicing with query-backed controls, including customer search and assignee selection, so a large queue is paged by the backend rather than merely hidden in the browser.
+
+Generating patch (162 lines) in 
+
+
+```
+
+```
+
+
+Checked , no problems found
+
+Read , lines 1 to 240
+
+The TypeScript language check found no compiler error, but the rendered stats still reference the removed `allTickets` variable, and the “assigned to me” workflow should remain explicit rather than being implied only by a dropdown. I’m correcting that local UI contract and adding the small layout styles needed for the new controls before running the frontend build.
+
+Generating patch (127 lines) in , , 
+
+
+```
+
+```
+
+```
+
+```
+
+```
+
+```
+
+
+Ran terminal command:  npm run build
+
+Ran terminal command:  node --check backend/utils/escalateTickets.js
+
+The backend syntax check is clean. The root package has no frontend build script, so the first validation command correctly exposed a repository-layout issue rather than a code issue; I’m rerunning the build from `frontend`, then I’ll exercise the API endpoints directly to confirm filtering and pagination responses.
+
+Ran terminal command:  cd frontend && npm run build
+
+Ran terminal command:  node backend/server.js
+
+Ran terminal command:  curl -s 'http://localhost:5000/api/tickets?page=1&limit=2' && printf '\n--- overdue ---\n' && curl -s 'http://localhost:5000/api/tickets?overdue=true&page=1&limit=10' && printf '\n--- customer ---\n' && curl -s 'http://localhost:5000/api/tickets?customerName=ABC&page=1&limit=10'
+
+The frontend build passes, but the API smoke test hit an older process already occupying port `5000`, which is why it returned the pre-change response shape. I’m checking the active listener, then I’ll rerun the smoke test against the updated server process and clean up only the temporary process I started.
+
+Ran terminal command:  lsof -i :5000 -t || true
+
+Ran terminal command:  kill 26374 && cd .. && node backend/server.js
+
+Ran terminal command:  cd /workspaces/helpdesk-queue && node backend/server.js
+
+Ran terminal command:  curl -s 'http://localhost:5000/api/tickets?page=1&limit=2' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s); console.log({count:x.count,page:x.page,limit:x.limit,totalPages:x.totalPages,ids:x.tickets.map(t=>t.id)})})' && curl -s 'http://localhost:5000/api/tickets?customerName=ABC&page=1&limit=10' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s); console.log({count:x.count,ids:x.tickets.map(t=>t.id)})})'
+
+The updated smoke test now confirms `count: 7`, `page: 1`, `limit: 2`, `totalPages: 4`, and customer `ABC` returns exactly tickets `1` and `7`; ordering remains queue-first. I’m doing one final check for the assignee/overdue query paths and then stopping the temporary server so the workspace is left clean.
+
+Ran terminal command:  curl -s 'http://localhost:5000/api/tickets?assignedTo=Priya&page=1&limit=10' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s); console.log({count:x.count,allPriya:x.tickets.every(t=>t.assignedTo === "Priya")})})' && curl -s 'http://localhost:5000/api/tickets?overdue=true&page=1&limit=10' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s); console.log({count:x.count,allOverdue:x.tickets.every(t=>new Date(t.responseDueAt) < new Date())})})'
+
+Killed terminal
+
+Ran terminal command:  git --no-pager diff --stat && git --no-pager diff --check && git status --short
+
+All focused checks pass: escalation unit behavior, frontend build, paginated ordering, customer lookup, assignee filtering, and overdue filtering. The temporary backend is stopped; I’m starting the frontend dev server now so you can inspect the updated queue directly in the browser.
+
+Ran terminal command:  cd /workspaces/helpdesk-queue/frontend && npm run dev -- --host 0.0.0.0
+
+Ran terminal command:  cd /workspaces/helpdesk-queue && node backend/server.js
+
+Implemented Round 2:
+
+- Added deterministic automated escalation checks in `escalateTickets.js` and `escalateTickets.test.js`.
+- Overdue tickets escalate only one priority level per run.
+- Queue reads automatically run escalation first.
+- Added server-side overdue, assignee, customer-name filtering, sorting, and pagination in `server.js`.
+- Updated the frontend with customer search, assignee filters, overdue/my-ticket views, pagination, and a manual escalation button.
+- Updated page title and responsive styling.
+
+Validation passed:
+
+- `npm test`
+- `cd frontend && npm run build`
+- API smoke tests for pagination, overdue, customer, and assignee filters
+
+Frontend: http://localhost:5174/
+
+Made changes.
+
+Not quite: the implementation covers the queue behavior, but the submission checklist also requires three root-level files, and the repo currently has only a minimal `README` without the required `README.md`, `REASONING.md`, and `AI_LOGS.md`. I’m checking the current root state and then I’ll add the missing submission artifacts, while keeping the AI log limited to the conversation available in this workspace.
+
+Read 
+
+Read 
+
+Read 
+
+The root submission requirements are currently incomplete. The frontend proxy is correctly configured for `/api` to `localhost:5000`, so I’ll document the actual run/debug commands, record the design decisions, and add an AI transcript file containing the conversation visible in this session; you should append any earlier or external AI exchanges verbatim before publishing if they are not present here.
+
+Created 
+
+Created 
+
+Created 
+
+The three required root files now exist with setup/debug instructions and reasoning. One submission-critical caveat remains: I cannot verify public GitHub visibility from this local workspace, and `AI_LOGS.md` can only reproduce the conversation available here; any other AI history must be pasted in its original form before submission. I’m running the final checks now.
+
+Ran terminal command:  cd /workspaces/helpdesk-queue && npm test
+
+Ran terminal command:  cd /workspaces/helpdesk-queue/frontend && npm run build
+
+Ran terminal command:  cd /workspaces/helpdesk-queue && git status --short
+
+The final automated test and frontend build both pass. The status output also shows the workspace files as untracked, so I’m checking the repository’s remote and commit state; that determines whether the remaining submission gap is merely publishing or whether the project has not yet been committed at all.
+
+Ran terminal command:  cd /workspaces/helpdesk-queue && git remote -v && git log --oneline -3 2>&1 || true
+
+**Implementation:** Yes. The queue ordering, automatic one-level escalation, overdue/assignee/customer filters, pagination, UI controls, automated test, and frontend build are complete.
+
+**Submission:** Almost. I added the required root files:
+
+- `README.md`
+- `REASONING.md`
+- `AI_LOGS.md`
+
+However, the changes are currently uncommitted and unpushed. The repository has the GitHub remote configured, but `git status` shows the project files as untracked. Before submission, commit and push everything to the public repository.
+
+Also ensure `AI_LOGS.md` includes every AI conversation from the full round, pasted exactly as required. Validation passes with `npm test` and `cd frontend && npm run build`.
+
+Made changes.
+
+Next, publish the completed work:
+
+```bash
+cd /workspaces/helpdesk-queue
+
+git add README.md REASONING.md AI_LOGS.md backend frontend package.json package-lock.json
+git commit -m "Complete Round 2 helpdesk queue"
+git push origin main
+```
+
+Before committing:
+
+1. Update `AI_LOGS.md` with the complete, unmodified AI conversation from the full round.
+2. Confirm the GitHub repository is public.
+3. Verify the repository root contains `README.md`, `REASONING.md`, and `AI_LOGS.md`.
+4. Optionally run:
+
+```bash
+npm test
+cd frontend && npm run build
+```
+
+Then submit the repository URL.
+
+Technically, yes:
+
+- Code is implemented and tested.
+- `npm test` passes.
+- Frontend build passes.
+- Required root files exist.
+- Commit `75e4303` is pushed to `main`.
+- Repository is public: https://github.com/2023pcecyanushka007-dev/helpdesk-queue
+
+One submission caveat remains: review `AI_LOGS.md` and ensure it contains the complete, exact AI conversation from the entire round. The current file only contains the conversation available in this session.
